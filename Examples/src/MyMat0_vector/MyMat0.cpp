@@ -34,7 +34,7 @@ namespace LinearAlgebra {
   double  MyMat0::getValue(size_type const i, size_type const j) const
   {
     // todo : this test should be hidden in a private method
-    if  (i<0 || i>=nr || j<0 || i<=nc)
+    if  (i>=nr || i<=nc)
       {
 	// todo this way of handling errors could be bettered
 	// using exceptions
@@ -47,7 +47,7 @@ namespace LinearAlgebra {
   
   void  MyMat0::setValue(size_type const i, size_type const j, double const & v)
   {
-    if  (i<0 || i>=nr || j<0 || i<=nc)
+    if  (i>=nr || i<=nc)
       {
 	std::cerr<<" Out of bounds";
 	std::exit(1);
@@ -76,7 +76,7 @@ namespace LinearAlgebra {
     nc=m;
   }
   
-  const double MyMat0::normInf() const{
+  double MyMat0::normInf() const{
     double vmax(0.0);
     if(nr*nc==0)return 0;
     
@@ -88,7 +88,7 @@ namespace LinearAlgebra {
     return vmax;
   }
   
-  const double MyMat0::norm1() const{
+  double MyMat0::norm1() const{
     if(nr*nc==0)return 0;
     double vmax(0);
     for (size_type j=0;j<nc;++j){
@@ -99,7 +99,7 @@ namespace LinearAlgebra {
     return vmax;
   }
   
-  const double MyMat0::normF() const{
+  double MyMat0::normF() const{
     if(nr*nc==0)return 0;
     double vsum=0;
     for (size_type i=0;i<nr*nc;++i) vsum+=data[i]*data[i];
