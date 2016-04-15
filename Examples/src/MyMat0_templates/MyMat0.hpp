@@ -1,7 +1,7 @@
 /*! MyMat0 A simple class for full matrix
     Luca Formaggia 2005     */
-#ifndef _MYMAT0__HH
-#define _MYMAT0__HH
+#ifndef HH_MYMAT0__HH
+#define HH_MYMAT0__HH
 #include <iostream> 
 #include <vector>
 #include <cstdlib>
@@ -22,19 +22,26 @@ namespace LinearAlgebra{
  */
   enum StoragePolicySwitch {ROWMAJOR,COLUMNMAJOR};
 
+  //! An empty class that transform an enum into a type
+  /*!
+    Used to switch to different implementations
+    
+   */
+  
   template< StoragePolicySwitch S>
   struct StorageType{};
 
   //! Type to hold indexex.
-  /*!
-    The standard library gives me one, so we use it
-    size_type is an integral type that is guaranteed to be
-    valid to store indices to arrays and vector. It is convertible
-    to int, so don't worry, int would (probably) work as fine, but
-    using size_type we are sure that we are consistent with the standard
-    library (and avoid problem with particular computer architectures)
+  /*!  
+    The standard library gives me one, so we use it std::size_t is
+    an integral type that is guaranteed to be valid to store indices
+    to arrays and vector. It is convertible to int, so don't worry,
+    unsigned int would (probably) work as fine, but using size_type we
+    are sure that we are consistent with the standard library (and
+    avoid problem with particular computer architectures).
+    We use and alias so it is easy to change if needed.
    */
-  typedef unsigned int size_type;
+  using size_type=std::size_t;
 
   //! A simple matrix class of double
   /*!
@@ -42,7 +49,7 @@ namespace LinearAlgebra{
    * storage through an internal policy. The policy is implemented via
    * a pointer to function selected at construction time.
    */
-  template<class T, StoragePolicySwitch storagePolicy=ROWMAJOR>
+  template<class T=double, StoragePolicySwitch storagePolicy=ROWMAJOR>
   class MyMat0{
     
   private:
@@ -53,19 +60,47 @@ namespace LinearAlgebra{
      * efficiency, but it makes the code safer (resource will be
      * released automatically when a MyMat0 object expires).
      * In alternative I might have used a smart pointer, in particular
-     * std::unique_ptr<double>
+     * std::unique_ptr<T>.
      */
     std::vector<T> data;
-      //! The general template for the policies. Only declaration since I will always use full specializations
-    //    template<StoragePolicySwitch thePolicy> size_type M_getIndex(size_type const & i, size_type const & j) const;
-T    //! Function returning index according to ordering
-    size_type getIndex(size_type const & i, size_type const & j, storageType<ROWMAJOR>) const;
-    size_type getIndex(size_type const & i, size_type const & j, storageType<COLUMNMAJOR>) const;
-    size_type getIndex(size_type const & i, size_type const & j) const
+    //! The other storage system 
+    static constexpr StoragePolicySwitch otherPolicy = storagePolicy == ROWMAJOR? COLUMNMAJOR : ROWMAJOR;
+    /*!
+      \defgroup getIndex Functions returning index according to ordering
+      
+      I use the argument type deduction to select the correct one. An alternative would be
+      to use template calass specialization. In taht case, you would decleare
+      
+      \code{.cpp}
+      size_type getIndex(size_type const & i, size_type const & j) const;
+      \endcode
+      
+      without definition and specialize it for different orderings
+      @{
+
+     */
+    size_type getIndex(size_type const i, size_type const j, StorageType<ROWMAJOR>) const
     {
-      return getIndex(i,j,storageType<storagePolicy>());
+      return j + i*nc;
     }
+    size_type getIndex(size_type const i, size_type const j, StorageType<COLUMNMAJOR>) const
+    {
+      return i + j*nr;
+    }
+    /*!
+      @}
+    */
   public:
+    //! It uses the one selected by the second argument.
+    /*
+      Made public to be able to do faster operations on indexes
+     */
+    size_type getIndex(size_type const i, size_type const j) const
+    {
+      return getIndex(i,j,StorageType<storagePolicy>());
+    }
+    //! I expose the type of the elements
+    using value_type=T;
     //! It builds a matrix with n rows and m columns.
     /*!
       Since we give default value for the parameters, this
@@ -75,13 +110,20 @@ T    //! Function returning index according to ordering
      
       @param n number of rows.
       @param m number of columns.
-      @param sPolicy the sorage policy (default rowmajor).
+      @param sPolicy the storage policy (default rowmajor).
+      @param init Initializer (default to default constructor)
      */
-    explicit MyMat0(size_type n=0, size_type m=0): nr(n), nc(m), data(n*m,0.){};
+    explicit MyMat0(size_type n=0, size_type m=0, T const & init=T()): nr(n), nc(m), data(n*m,init){};
     //! Default copy constructor is ok
-    MyMat0(const MyMat0&)=default;
+    MyMat0(MyMat0 const &)=default;
+    //! Copy constructor for other policy
+    MyMat0(MyMat0<T,otherPolicy> const & m);
     //! Default move constructor is ok
     MyMat0(MyMat0&&)=default;
+    //! Default copy assign is ok
+    MyMat0& operator=(MyMat0 const&)=default;
+    //! Copy assign for other ordering
+    MyMat0& operator=(MyMat0<T,otherPolicy> const &);
     //! Default move assign is ok
     MyMat0& operator=(MyMat0&&)=default;
     //! Resizing the matrix
@@ -99,7 +141,7 @@ T    //! Function returning index according to ordering
     /*!
       It allows a=m(1,1) on constant matrix m
      */
-    T operator () (const size_type i, const size_type j) const
+    T const & operator () (const size_type i, const size_type j) const
     {
     	return data[getIndex(i,j)];
     }
@@ -116,19 +158,20 @@ T    //! Function returning index according to ordering
     {
       return storagePolicy;
     }
+    /*! \defgroup Norms Various matrix norms
+      The return type is a double. However I can make it better
+      by use of type traits.
+      Need specialization for matrix of complex numbers.
+      They make sense only if T has sensible arithmetic operators.
+      @{
+    */
     //! Computes \f$ ||A||_\infty \f$
-    T normInf() const;
+    double normInf() const;
     //! Computes \f$ ||A||_1 \f$
-    T norm1() const;
+    double norm1() const;
     //! Computes Frobenious norm
-    long double normF() const;
-    //! An example of matrix times vector
-    /*!
-     * It checks for consistency: the size of the vector must be equal
-     * to the number of columns
-     */
-    void vecMultiply(const std::vector<T> &v, std::vector<T> & res) const;
-
+    double normF() const;
+    /*! @} */
     //! Generates a random matrix
     /*!
      * It fills the matrix with random numbers in [0,1)
@@ -138,6 +181,32 @@ T    //! Function returning index according to ordering
      * Otherwise the given value is used.
      */
     void fillRandom(unsigned int seed=0);
+    /*! Multiply the matrix with an std::vector
+      
+      @param res vector where to store result
+      @param v vector to be multiplied. It must have size()>=nc (no check is made)
+     */  
+    void vecMultiply(const std::vector<T> &v, std::vector<T> & res) const;
+    //! Iterator to the begin of the internal structure
+    /*! 
+      To be used for fast operation on the data
+     */
+    auto begin() -> decltype(data.begin()) {return data.begin();}
+    //! Iterator to the begin of the internal structure
+    /*! 
+      To be used for fast operation on the data
+     */
+    auto cbegin() const -> decltype(data.cbegin()) {return data.cbegin();}
+    //! Iterator to the end of the internal structure
+    /*! 
+      To be used for fast operation on the data
+     */
+    auto end() -> decltype(data.end()) {return data.end();}
+    //! Iterator to the end of the internal structure
+    /*! 
+      To be used for fast operation on the data
+     */
+    auto cend() const -> decltype(data.cend()) {return data.cend();}
     //! It shows matrix content
     /*!
      *  It pretty prints the matrix
@@ -148,8 +217,9 @@ T    //! Function returning index according to ordering
   };
   //! Matrix times vector via operator *
   /*!
+    The vector is anything that 
    * @param m The matrix
-   * @param v The vector (with size equal to the number of columns)
+   * @param v A vector (with size equal to the number of columns)
    * @return The result in a vector of the size = to the number of row
    */
   template<class T, StoragePolicySwitch storagePolicy>
@@ -157,27 +227,50 @@ T    //! Function returning index according to ordering
 
   //                 DEFINITIONS
   
+  template<class T, StoragePolicySwitch storagePolicy>
+  MyMat0<T,storagePolicy>::MyMat0(MyMat0<T,otherPolicy> const & m):nr(m.nrow()),nc(m.ncol()),data(nr*nc)
+  {
+    
+    for (size_type i=0; i< nr;++i)
+      for (size_type j=0; j< nc;++j)data[getIndex(i,j)]=m(i,j);
+  }
+
+  template<class T, StoragePolicySwitch storagePolicy>
+  MyMat0<T,storagePolicy> &
+  MyMat0<T,storagePolicy>::operator=(MyMat0<T,otherPolicy> const & m)
+  {
+    this->resize(m.nr,m.nc);
+    for (size_type i=0; i< nr;++i)
+      for (size_type j=0; j< nc;++j)data[getIndex(i,j)]=m(i,j);
+    return *this;
+  }
+  
+  
+  // This in case you want to implement the different access with specialization
   //! Specialization for row major ordering
   /*!
    Note: important to declare it inline. Otherwise it should go to a cpp file! And it will be less
    efficient!
   */
-  template<class T>
+  /*
+    template<class T>
   inline size_type MyMat0<T,ROWMAJOR>::getIndex(size_type const & i, size_type const & j) const
   {
-    return i + j*nr;;
+  return j + i*nc;
   }
+  */
   //! Specialization for column major ordering
   /*!
     Note: important to declare it inline. Otherwise it should go to a cpp file! And it will be less
     efficient!
   */
+  /*
   template<class T>
   inline size_type MyMat0<T,COLUMNMAJOR>::getIndex(size_type const & i, size_type const & j) const
   {
-    return j + i*nc;
+    return i + j*nr;
   }
-  
+  */
   template<class T, StoragePolicySwitch storagePolicy>
   void MyMat0<T, storagePolicy>::resize(size_type const n, size_type const m)
   {
@@ -194,12 +287,12 @@ T    //! Function returning index according to ordering
   }
   
   template<class T, StoragePolicySwitch storagePolicy>
-  T MyMat0<T,storagePolicy>::normInf() const{
+  double MyMat0<T,storagePolicy>::normInf() const{
     if(nr*nc==0)return 0;
-    T vmax(0);
+    double vmax(0.);
     
     for (size_type i=0;i<nr;++i){
-      T vsum=0;
+      double vsum=0;
       for (size_type j=0;j<nc;++j) vsum+=data[getIndex(i,j)];
       vmax=std::max(vsum,vmax);
     }
@@ -207,11 +300,11 @@ T    //! Function returning index according to ordering
   }
   
   template<class T, StoragePolicySwitch storagePolicy>
-  T MyMat0<T,storagePolicy>::norm1() const{
+  double MyMat0<T,storagePolicy>::norm1() const{
     if(nr*nc==0)return 0;
-    T vmax(0);
+    double vmax(0);
     for (size_type j=0;j<nc;++j){
-      T vsum=0;
+      double vsum=0;
       for (size_type i=0;i<nr;++i) vsum+=data[getIndex(i,j)];
       vmax=std::max(vsum,vmax);
     }
@@ -219,9 +312,9 @@ T    //! Function returning index according to ordering
   }
   
   template<class T, StoragePolicySwitch storagePolicy>
-  long double MyMat0<T,storagePolicy>::normF() const{
-    if(nr*nc==0)return 0;
-    long double vsum=0.0;
+  double MyMat0<T,storagePolicy>::normF() const{
+    if(nr*nc==0)return 0.0;
+    double vsum{0.0};
     for (auto const x: data) vsum+=x*x;
     return std::sqrt(vsum);
   }
@@ -235,7 +328,7 @@ T    //! Function returning index according to ordering
 	std::cerr<<" Vector must have the right size"<<std::endl;
 	std::exit(1);
       }
-    res.resize(nr,0);
+    res.resize(nr,T(0));
     // for efficiency I use two different algorithms
 
     switch(storagePolicy)
@@ -258,7 +351,7 @@ T    //! Function returning index according to ordering
       double rmax=static_cast<double>(RAND_MAX+2.0);
     std::srand(seed);
     if(nr*nc>0)
-      for (auto& x: data) x=static_cast<double>(std::rand()+1)/rmax;
+      for (auto& x: data) x=static_cast<T>((std::rand()+1)/rmax);
   }
   
   
@@ -274,7 +367,7 @@ T    //! Function returning index according to ordering
 	out<<std::endl;
     }
   }
-
+  
   template<class T, StoragePolicySwitch storagePolicy>
   std::vector<T> operator * (MyMat0<T, storagePolicy> const & m,std::vector<T> const & v)
   {
@@ -282,7 +375,7 @@ T    //! Function returning index according to ordering
     m.vecMultiply(v,tmp);
     return tmp;
   }
-
+  
 }
 
 

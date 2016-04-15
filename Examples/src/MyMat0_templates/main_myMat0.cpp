@@ -2,13 +2,14 @@
 #include <vector>
 #include <fstream>
 #include "MyMat0.hpp"
-
+#include "MyMat0_util.hpp"
+#include "chrono.hpp"
 
 int main()
 {
   using namespace LinearAlgebra;
   // I create two matrices
-  MyMat0<COLUMNMAJOR> a;
+  MyMat0<double,COLUMNMAJOR> a;
 
   a.resize(3,4);
   MyMat0<> b(5,5);
@@ -42,6 +43,38 @@ int main()
   std::cout<<*(va.end()-1)<<"]^T =";
   std::cout<<"[";
   for (auto i=res.cbegin();i<res.cend()-1;++i)std::cout<<*i<<", ";
-  std::cout<<*(res.end()-1)<<"]"<<std::endl;
+  std::cout<<*(res.end()-1)<<"]"<<std::endl<<std::endl;
   std::cout<<"Norm1, NOrmInf and NormF of a: "<<a.norm1()<<" "<<a.normInf()<<" "<<a.normF()<<std::endl;
+
+  // Testing different implementation of matrix/matrix
+  // Creating 2 big matrices
+  //MyMat0<double,COLUMNMAJOR> A(1000,1000);
+  MyMat0<double,ROWMAJOR> A(1024,2048);
+  A.fillRandom();
+  //  MyMat0<double,COLUMNMAJOR> B(1000,1000);
+  MyMat0<double,ROWMAJOR> B(2048,1024);
+  B.fillRandom();
+  Timings::Chrono watch;
+  std::cout<< "Standard Matrix Moltiplication"<<"\n";
+  watch.start();
+  auto res1=matMul(A,B);
+  watch.stop();
+  double t1=watch.wallTime();
+  std::cout<<watch<<std::endl;
+  std::cout<< "Optimized Matrix Moltiplication"<<"\n";
+  watch.start();
+  auto res2=matMulOpt(A,B);
+  watch.stop();
+  double t2=watch.wallTime();
+  std::cout<<watch<<std::endl;
+  std::cout<<"Gain: "<<100*(t1-t2)/t1<<"%"<<std::endl;
+  std::cout<<"Speedup: "<<t1/t2<<std::endl;
+  std::cout<< " Blas Optimized Matrix Moltiplication"<<"\n";
+  watch.start();
+  res2=matMulOptBlas(A,B);
+  watch.stop();
+  t2=watch.wallTime();
+  std::cout<<watch<<std::endl;
+  std::cout<<"Gain: "<<100*(t1-t2)/t1<<"%"<<std::endl;
+  std::cout<<"Speedup: "<<t1/t2<<std::endl;
 }
