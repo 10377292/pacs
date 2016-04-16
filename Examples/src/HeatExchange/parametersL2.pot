@@ -1,0 +1,17 @@
+a1=4.
+# Second longitudinal dimension
+a2=50.
+# Dirichlet condition
+To=46.
+# External temperature 
+Te=20.
+# Conductivity
+k=0.164
+# Convection coefficient
+hc=200.0e-6
+# Number of elements
+M=11
+# Name of the results file
+ResName=risultatiL2.dat
+# Choice of the norm
+Norm = L2

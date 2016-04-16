@@ -21,6 +21,8 @@ include $(MAKEFILEH_DIR)/Makefile.inc
 #
 -include Makefile.inc
 
+CXXFLAGS += -I${mkBoostInc}
+LIBD += -L${mkBoostLib}
 #
 # The general setting is as follows:
 # mains are identified bt main_XX.cpp

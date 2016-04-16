@@ -1,6 +1,7 @@
 #ifndef HH_Parameters_HH
 #define HH_Parameters_HH
 #include <iosfwd>
+#include <iostream>
 struct parameters
 {
   //! max number of iteration for Gauss-Siedel
@@ -23,6 +24,11 @@ struct parameters
   double hc;
   //! Number of elements
   int M;
+  //! Name of the results file
+  std::string ResName;
+  //! Choice of the norm
+  std::string Norm;
+
   //! Constructor takes default values
   parameters():
     itermax(1000000),
@@ -35,7 +41,10 @@ struct parameters
     k(0.164),
     hc(1.e-6*200.),
     M(100)
-  {}
+  {
+    ResName = "Results.dat";
+    Norm = "Rn";
+  }
 };
 //! Prints parameters
 std::ostream & operator << (std::ostream &,const parameters &);

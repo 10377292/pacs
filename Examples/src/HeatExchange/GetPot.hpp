@@ -100,6 +100,7 @@ public:
     inline int                operator()(const char* VarName, int           Default) const;
     inline double             operator()(const char* VarName, const double& Default) const;
     inline const std::string  operator()(const char* VarName, const char*   Default) const;
+    inline const std::string  operator()(const char* VarName, std::string   Default) const;
     //     -- vectors
     inline int                operator()(const char* VarName, int Default, unsigned Idx) const;
     inline double             operator()(const char* VarName, const double& Default, unsigned Idx) const;
@@ -1473,6 +1474,17 @@ GetPot::operator()(const char* VarName, const double& Default) const
 
 inline const std::string
 GetPot::operator()(const char* VarName, const char* Default) const
+{
+    // (*) recording of requested variables happens in '__find_variable()'
+    const variable*  sv = __find_variable(VarName);
+    if( sv == 0 ) return Default;
+    // -- returning a c_str() pointer is OK here, since the variable remains existant,
+    //    while 'sv' of course is delete at the end of the function.
+    return sv->original;
+}
+
+inline const std::string
+GetPot::operator()(const char* VarName, std::string Default) const
 {
     // (*) recording of requested variables happens in '__find_variable()'
     const variable*  sv = __find_variable(VarName);
