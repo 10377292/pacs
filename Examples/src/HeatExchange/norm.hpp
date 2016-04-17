@@ -11,7 +11,7 @@ double norm (std::string Norm, double xn, double xv, double h, double xpsn, doub
 		}
 		// H1 norm
 		if (Norm.compare("H1")==0){
-			return (-(xn-xv)*(xn-xv)*h) + ((xpsn-xpso)*(xpsn-xpso)/h);
+			return ((xn-xv)*(xn-xv)*h) + ((xn-xv-xpsn+xpso)*(xn-xv-xpsn+xpso)/h);
 		}
 	}
 }
